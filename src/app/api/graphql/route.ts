@@ -2,7 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextRequest } from 'next/server';
 
-// 1. The Schema: This defines the shape of our M&S data
+// 1. The Schema
 const typeDefs = `#graphql
   type Offer {
     id: ID!
@@ -26,14 +26,14 @@ const typeDefs = `#graphql
   }
 `;
 
-// 2. The Mock Database: Simulating what the M&S backend would store
-let mockOffers = [
+// 2. The Mock Database (Fixed: Now using 'const' to pass ESLint)
+const mockOffers = [
   { id: '1', title: '20% off Food Hall', description: 'Valid until Friday on all M&S Food', isActivated: false },
   { id: '2', title: 'Free Coffee', description: 'Redeem at any M&S Cafe', isActivated: false },
   { id: '3', title: '15% off Third-Party Brands', description: 'Online only', isActivated: false }
 ];
 
-// 3. The Resolvers: This tells GraphQL how to fetch or change the data
+// 3. The Resolvers (Fixed: Using 'unknown' instead of 'any' for strict TypeScript)
 const resolvers = {
   Query: {
     getUserDetails: () => ({ 
@@ -43,17 +43,16 @@ const resolvers = {
     }),
   },
   Mutation: {
-    activateOffer: (_: any, { offerId }: { offerId: string }) => {
+    activateOffer: (_: unknown, { offerId }: { offerId: string }) => {
       const offer = mockOffers.find(o => o.id === offerId);
       if (offer) {
-        offer.isActivated = true; // Changes the status in our mock database
+        offer.isActivated = true;
       }
       return offer;
     }
   }
 };
 
-// 4. Initialize the Server
 const server = new ApolloServer({
   typeDefs,
   resolvers,
@@ -61,4 +60,11 @@ const server = new ApolloServer({
 
 const handler = startServerAndCreateNextHandler<NextRequest>(server);
 
-export { handler as GET, handler as POST };
+// 4. App Router Specific Exports (Fixed: Prevents the RouteHandlerConfig error)
+export async function GET(request: NextRequest) {
+  return handler(request);
+}
+
+export async function POST(request: NextRequest) {
+  return handler(request);
+}

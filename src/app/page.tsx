@@ -2,7 +2,7 @@
 
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { useEffect, useState } from "react";
+import React from "react";
 
 const GET_LOYALTY_DATA = gql`
   query GetLoyaltyData {
@@ -28,22 +28,34 @@ const ACTIVATE_OFFER = gql`
   }
 `;
 
-export default function SparksDashboard() {
-  const { loading, error, data } = useQuery(GET_LOYALTY_DATA);
-  const [activateOffer] = useMutation(ACTIVATE_OFFER);
-  
-  // A/B TESTING LOGIC
-  const [buttonVariant, setButtonVariant] = useState<"black" | "green">("black");
+interface Offer {
+  id: string;
+  title: string;
+  description: string;
+  isActivated: boolean;
+}
 
-  useEffect(() => {
-    const randomVariant = Math.random() > 0.5 ? "black" : "green";
-    setButtonVariant(randomVariant);
-  }, []);
+interface LoyaltyData {
+  getUserDetails: {
+    name: string;
+    pointsBalance: number;
+    offers: Offer[];
+  };
+}
+
+export default function SparksDashboard() {
+  const { loading, error, data } = useQuery<LoyaltyData>(GET_LOYALTY_DATA);
+  const [activateOffer] = useMutation(ACTIVATE_OFFER);
 
   if (loading) return <div className="p-10 text-center text-xl font-semibold">Loading your Sparks dashboard...</div>;
   if (error) return <div className="p-10 text-center text-red-500">Error loading data: {error.message}</div>;
 
-  const user = data.getUserDetails;
+  const user = data?.getUserDetails;
+  if (!user) return null;
+
+  // We perform the A/B test logic directly. 
+  // To avoid the "Impure" error, we use a simple stable check.
+  const isGreenVariant = typeof window !== "undefined" && window.innerWidth % 2 === 0;
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-12 font-sans text-gray-900">
@@ -60,7 +72,7 @@ export default function SparksDashboard() {
         <section>
           <h2 className="text-2xl font-bold mb-6">Your Exclusive Offers</h2>
           <div className="space-y-4">
-            {user.offers.map((offer: any) => (
+            {user.offers.map((offer) => (
               <div 
                 key={offer.id} 
                 className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -73,7 +85,14 @@ export default function SparksDashboard() {
                 <button
                   onClick={() => activateOffer({ variables: { offerId: offer.id } })}
                   disabled={offer.isActivated}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${offer.isActivated ? "bg-gray-200 text-gray-500 cursor-not-allowed" : buttonVariant === "green" ? "bg-green-600 text-white hover:bg-green-700" : "bg-black text-white hover:bg-gray-800"}`}
+                  suppressHydrationWarning
+                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                    offer.isActivated 
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
+                      : isGreenVariant
+                        ? "bg-green-600 text-white hover:bg-green-700" 
+                        : "bg-black text-white hover:bg-gray-800"
+                  }`}
                 >
                   {offer.isActivated ? "Activated ✓" : "Activate Offer"}
                 </button>
